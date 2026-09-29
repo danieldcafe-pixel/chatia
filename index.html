@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Chatia</title>
+<link rel="manifest" href="chatia.webmanifest">
+<meta name="apple-mobile-web-app-title" content="Chatia">
+<meta name="theme-color" content="#12a67a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+  :root{--wa:#12a67a; --wa-d:#0e8c67; --me:#e7ffdb; --other:#fff; --wall:#e5ddd4; --chroma:#808080; --sub:#667781;}
+  *{box-sizing:border-box;-webkit-font-smoothing:antialiased}
+  body{margin:0;background:#0b141a;color:#111;font-family:Helvetica,Arial,"Segoe UI",system-ui,sans-serif}
+  [contenteditable]{outline:none}
+  .edit-on [contenteditable]:focus{box-shadow:0 0 0 2px var(--wa) inset;border-radius:4px}
+
+  #bar{position:sticky;top:0;z-index:100;background:#202c33;color:#e9edef;display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 14px;font-size:13px}
+  #bar button{background:#2a3942;color:#e9edef;border:0;border-radius:6px;padding:8px 12px;font-weight:600;cursor:pointer;font-size:13px}
+  #bar button:hover{background:#3b4a54}
+  #bar button.primary{background:var(--wa)}
+  #bar .sp{flex:1}
+  .hide-controls #bar{display:none}
+  body.bar-off #bar{display:none}
+  #gear{position:fixed;top:8px;left:8px;z-index:130;width:34px;height:34px;border-radius:50%;border:0;background:rgba(0,0,0,.30);color:#fff;font-size:16px;cursor:pointer;opacity:.45;transition:opacity .15s}
+  #gear:hover{opacity:1}
+  .hide-controls #gear{display:none}
+  #colorWrap{display:inline-flex;align-items:center;gap:6px}
+  #colorWrap .sw{width:20px;height:20px;border-radius:50%;cursor:pointer;display:inline-block;border:2px solid #555}
+  #colorWrap input[type=color]{width:32px;height:30px;padding:0;border:0;border-radius:6px;background:#2a3942;cursor:pointer;vertical-align:middle}
+  #helpOverlay{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:120;padding:16px}
+  #helpOverlay.show{display:flex}
+  #helpOverlay .card{background:#fff;color:#111;max-width:460px;width:100%;max-height:88vh;overflow:auto;border-radius:14px;padding:22px}
+  #helpOverlay h2{margin:0 0 4px;font-size:22px}
+  #helpOverlay .lead{color:#65676b;font-size:14px;margin:0 0 14px}
+  #helpOverlay .row{display:flex;gap:12px;align-items:flex-start;margin:12px 0}
+  #helpOverlay .row .k{font-size:20px;flex:0 0 auto;width:26px;text-align:center}
+  #helpOverlay .row .v{font-size:14px;line-height:1.4}
+  #helpOverlay .row .v b{display:block;margin-bottom:1px}
+  #helpOverlay .ok{margin-top:16px;width:100%;background:var(--wa);color:#fff;border:0;border-radius:8px;padding:12px;font-weight:700;font-size:15px;cursor:pointer}
+
+  .stage{min-height:100vh;display:flex;justify-content:center;align-items:flex-start;padding:20px 12px 60px;background:#0b141a;transition:background .2s}
+  body.chroma .stage{background:var(--chroma)}
+  .corner{display:none;position:fixed;width:46px;height:46px;z-index:70;pointer-events:none}
+  body.chroma .corner{display:block}
+  .corner::before,.corner::after{content:"";position:absolute;background:#000}
+  .corner::before{left:50%;top:0;width:3px;height:100%;transform:translateX(-1.5px)}
+  .corner::after{top:50%;left:0;height:3px;width:100%;transform:translateY(-1.5px)}
+  #c1{top:22px;left:22px} #c2{top:22px;right:22px} #c3{bottom:22px;left:22px} #c4{bottom:22px;right:22px}
+
+  .phone{width:400px;max-width:100%;height:760px;background:var(--wall);border-radius:14px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 12px 40px rgba(0,0,0,.4)}
+  .wa-head{background:var(--wa);color:#fff;display:flex;align-items:center;gap:10px;padding:10px 12px}
+  .wa-back{font-size:22px;line-height:1}
+  .wa-av{width:40px;height:40px;border-radius:50%;background:#cfd8dc center/cover;flex:0 0 auto;position:relative;overflow:hidden}
+  .edit-on .wa-av{cursor:pointer}
+  .edit-on .wa-av::after{content:"📷";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.3);font-size:16px;opacity:0}
+  .edit-on .wa-av:hover::after{opacity:1}
+  .wa-id{flex:1;min-width:0}
+  .wa-name{font-weight:700;font-size:16px}
+  .wa-status{font-size:12px;opacity:.9;height:15px}
+  .wa-icons{display:flex;gap:16px;font-size:18px}
+
+  .wa-body{flex:1;overflow-y:auto;padding:14px 10px;display:flex;flex-direction:column;gap:4px;
+    background-image:radial-gradient(rgba(0,0,0,.035) 1px,transparent 1px);background-size:18px 18px}
+  .msg{max-width:78%;padding:6px 9px 18px;border-radius:8px;position:relative;font-size:14.5px;line-height:1.35;box-shadow:0 1px .5px rgba(0,0,0,.13);word-wrap:break-word}
+  .msg.me{align-self:flex-end;background:var(--me);border-top-right-radius:2px}
+  .msg.other{align-self:flex-start;background:var(--other);border-top-left-radius:2px}
+  .msg .t{position:absolute;right:8px;bottom:3px;font-size:10px;color:var(--sub)}
+  .msg.me .t{right:24px}
+  .msg.me .ck{position:absolute;right:8px;bottom:4px;font-size:11px;color:#53bdeb}
+  .msg .x{position:absolute;top:-8px;right:-8px;width:20px;height:20px;border-radius:50%;background:#e53935;color:#fff;border:0;font-size:11px;cursor:pointer;display:none}
+  .edit-on .msg:hover .x{display:block}
+  .typing{align-self:flex-start;background:#fff;border-radius:8px;padding:10px 12px;box-shadow:0 1px .5px rgba(0,0,0,.13)}
+  .typing span{display:inline-block;width:7px;height:7px;margin:0 1px;border-radius:50%;background:#9aa5ab;animation:bl 1.2s infinite}
+  .typing span:nth-child(2){animation-delay:.2s}.typing span:nth-child(3){animation-delay:.4s}
+  @keyframes bl{0%,60%,100%{opacity:.3;transform:translateY(0)}30%{opacity:1;transform:translateY(-3px)}}
+
+  .wa-input{display:flex;align-items:center;gap:8px;padding:8px;background:#f0f2f5}
+  .wa-input .field{flex:1;background:#fff;border-radius:22px;padding:10px 14px;display:flex;align-items:center}
+  .wa-input input{border:0;outline:0;width:100%;font-size:15px;background:transparent}
+  .wa-send{width:44px;height:44px;border-radius:50%;background:var(--wa);color:#fff;border:0;font-size:18px;cursor:pointer;flex:0 0 auto}
+
+  /* editor / guion */
+  .editor{max-width:420px;margin:16px auto 0;background:#111b21;color:#e9edef;border-radius:12px;padding:14px;display:none}
+  .editor.show{display:block}
+  .editor h3{margin:6px 0 8px;font-size:14px;color:#8696a0;text-transform:uppercase;letter-spacing:.05em}
+  .editor .note{color:#8696a0;font-size:12px;margin:0 0 10px}
+  .rowline{display:flex;gap:6px;align-items:center;margin-bottom:8px}
+  .rowline input[type=text]{flex:1;background:#202c33;border:1px solid #2a3942;color:#e9edef;border-radius:8px;padding:9px 10px;font-size:13px}
+  .rowline input[type=number]{width:58px;background:#202c33;border:1px solid #2a3942;color:#e9edef;border-radius:8px;padding:9px 6px;font-size:13px;text-align:center}
+  .rowline .lbl{color:#8696a0;font-size:12px}
+  .rowline .rm{background:#2a3942;border:0;color:#e9edef;border-radius:8px;width:34px;height:34px;cursor:pointer}
+  .addbtn{background:#2a3942;border:0;color:#e9edef;border-radius:8px;padding:9px 12px;font-weight:600;cursor:pointer;font-size:13px}
+  .quick{display:flex;gap:6px;align-items:center;margin:2px 0 12px}
+  .quick .q{background:#202c33;border:1px solid #2a3942;color:#e9edef;border-radius:999px;padding:6px 12px;font-size:13px;cursor:pointer}
+  .quick .q:hover{border-color:var(--wa)}
+  .sep{height:1px;background:#222d34;margin:14px 0}
+</style>
+</head>
+<body class="edit-on bar-off">
+
+<button id="gear" onclick="toggleBar()" title="Ajustes / Settings">⚙️</button>
+
+<div id="bar">
+  <button class="primary" id="playBtn" onclick="playAll()" data-i18n="ui_play">▶ Reproducir</button>
+  <button id="scriptBtn" onclick="toggleEditor()" data-i18n="ui_script">📝 Guion</button>
+  <span id="colorWrap"><span data-i18n="ui_color">🎨 Color</span>
+    <span class="sw" style="background:#12a67a" onclick="setColor('#12a67a')"></span>
+    <span class="sw" style="background:#0b5cff" onclick="setColor('#0b5cff')"></span>
+    <span class="sw" style="background:#9333ea" onclick="setColor('#9333ea')"></span>
+    <span class="sw" style="background:#e11d48" onclick="setColor('#e11d48')"></span>
+    <span class="sw" style="background:#111827" onclick="setColor('#111827')"></span>
+    <input type="color" id="colorPick" value="#12a67a" oninput="setColor(this.value)" title="Color personalizado"></span>
+  <span class="sp"></span>
+  <button id="helpBtn" onclick="toggleHelp()" data-i18n="ui_help">❔ Ayuda</button>
+  <button id="langBtn" onclick="toggleLang()">🌐 EN</button>
+  <button id="fullBtn" onclick="toggleFull()" data-i18n="ui_full">⛶ Pantalla completa</button>
+  <button id="chromaBtn" onclick="toggleChroma()">🎬 Chroma: OFF</button>
+  <button id="editBtn" onclick="toggleEdit()">✏️ Edición: ON</button>
+  <button onclick="save()" data-i18n="ui_save">💾 Guardar</button>
+  <button onclick="capture()" data-i18n="ui_capture">📸 Capturar</button>
+  <button onclick="resetAll()" data-i18n="ui_reset">↺ Restablecer</button>
+</div>
+
+<div class="stage">
+  <div class="phone">
+    <div class="wa-head">
+      <div class="wa-back">‹</div>
+      <div class="wa-av" id="avatar"></div>
+      <div class="wa-id">
+        <div class="wa-name" contenteditable="true" id="cname">Contacto</div>
+        <div class="wa-status" id="status" data-i18n="status_online">en línea</div>
+      </div>
+      <div class="wa-icons">📹 📞 ⋮</div>
+    </div>
+    <div class="wa-body" id="body"></div>
+    <div class="wa-input">
+      <div class="field"><input id="input" type="text" placeholder="Escribe un mensaje" onkeydown="if(event.key==='Enter')send()"></div>
+      <button class="wa-send" onclick="send()">➤</button>
+    </div>
+  </div>
+</div>
+
+<div class="corner" id="c1"></div><div class="corner" id="c2"></div>
+<div class="corner" id="c3"></div><div class="corner" id="c4"></div>
+
+<div class="editor" id="editor">
+  <p class="note" id="edNote">Al enviar tu mensaje, saldrá la siguiente respuesta programada (tras su tiempo, con "escribiendo…").</p>
+  <h3 data-i18n="ed_replies">Respuestas de la otra persona (con su tiempo)</h3>
+  <div class="quick"><span class="lbl" data-i18n="ed_quick">Tiempo rápido:</span>
+    <span class="q" onclick="quick(3)">3s</span><span class="q" onclick="quick(4)">4s</span><span class="q" onclick="quick(7)">7s</span></div>
+  <div id="replies"></div>
+  <button class="addbtn" onclick="addReply()" data-i18n="ed_add_reply">＋ Añadir respuesta</button>
+  <div class="sep"></div>
+  <h3 data-i18n="ed_mine">Tus mensajes (para ▶ Reproducir)</h3>
+  <div id="mine"></div>
+  <button class="addbtn" onclick="addMine()" data-i18n="ed_add_mine">＋ Añadir mensaje</button>
+  <div class="sep"></div>
+  <button class="addbtn" onclick="clearChat()" data-i18n="ed_clearchat">🧹 Vaciar chat</button>
+</div>
+
+<div id="helpOverlay">
+  <div class="card">
+    <h2 id="helpTitle">Cómo usar Chatia</h2>
+    <p class="lead" id="helpLead">Guía rápida de la app.</p>
+    <div id="helpBody"></div>
+    <button class="ok" onclick="toggleHelp()" id="helpOk">Entendido</button>
+  </div>
+</div>
+
+<input type="file" id="picker" accept="image/*" style="display:none">
+
+<script>
+  const KEY='chat-v1', SUITE='suite-v1';
+  const I18N={
+    es:{ui_menu:"← Menú",ui_help:"❔ Ayuda",ui_color:"🎨 Color",ui_play:"▶ Reproducir",ui_script:"📝 Guion",ui_full:"⛶ Pantalla completa",ui_full_exit:"⛶ Salir de pantalla completa",
+      ui_chroma_on:"🎬 Chroma: ON",ui_chroma_off:"🎬 Chroma: OFF",ui_edit_on:"✏️ Edición: ON",ui_edit_off:"✏️ Edición: OFF",
+      ui_save:"💾 Guardar",ui_capture:"📸 Capturar",ui_reset:"↺ Restablecer",
+      status_online:"en línea",status_typing:"escribiendo…",ph_input:"Escribe un mensaje",
+      ed_replies:"Respuestas de la otra persona (con su tiempo)",ed_mine:"Tus mensajes (para ▶ Reproducir)",
+      ed_add_reply:"＋ Añadir respuesta",ed_add_mine:"＋ Añadir mensaje",ed_quick:"Tiempo rápido:",ed_clearchat:"🧹 Vaciar chat",
+      ed_note:'Al enviar tu mensaje, saldrá la siguiente respuesta programada (tras su tiempo, con "escribiendo…").',
+      def_contact:"Contacto",ph_reply:"Respuesta de la otra persona…",ph_mine:"Tu mensaje…"},
+    en:{ui_menu:"← Menu",ui_help:"❔ Help",ui_color:"🎨 Color",ui_play:"▶ Play",ui_script:"📝 Script",ui_full:"⛶ Full screen",ui_full_exit:"⛶ Exit full screen",
+      ui_chroma_on:"🎬 Chroma: ON",ui_chroma_off:"🎬 Chroma: OFF",ui_edit_on:"✏️ Editing: ON",ui_edit_off:"✏️ Editing: OFF",
+      ui_save:"💾 Save",ui_capture:"📸 Capture",ui_reset:"↺ Reset",
+      status_online:"online",status_typing:"typing…",ph_input:"Type a message",
+      ed_replies:"Other person's replies (with delay)",ed_mine:"Your messages (for ▶ Play)",
+      ed_add_reply:"＋ Add reply",ed_add_mine:"＋ Add message",ed_quick:"Quick delay:",ed_clearchat:"🧹 Clear chat",
+      ed_note:'When you send your message, the next scripted reply appears (after its delay, with "typing…").',
+      def_contact:"Contact",ph_reply:"Other person's reply…",ph_mine:"Your message…"}
+  };
+  let lang='es', editOn=true, chromaOn=false, replyIdx=0, lastDelayField=null, contactEdited=false;
+  const $=id=>document.getElementById(id);
+  const body=$('body'), input=$('input'), statusEl=$('status'), picker=$('picker');
+
+  try{ const s=JSON.parse(localStorage.getItem(SUITE)); if(s&&s.lang) lang=s.lang; }catch(e){}
+  let chatColor='#12a67a';
+  try{ const c=localStorage.getItem('chat-color-v1'); if(c) chatColor=c; }catch(e){}
+  function applyColor(){ document.documentElement.style.setProperty('--wa',chatColor); const cp=$('colorPick'); if(cp) cp.value=chatColor; }
+  function setColor(v){ chatColor=v; applyColor(); try{ localStorage.setItem('chat-color-v1',v); }catch(e){} }
+
+  const HELP={
+    es:[["✍️","Escribe y envía","Escribe tu mensaje abajo y pulsa ➤. Aparecerá la siguiente respuesta programada tras su tiempo, con “escribiendo…”."],
+        ["📝","Guion","Prepara las respuestas de la otra persona y su tiempo (3/4/7 s o el que quieras). En “Tus mensajes” pones los tuyos para ▶ Reproducir."],
+        ["▶️","Reproducir","Reproduce la conversación entera de forma automática."],
+        ["🎨","Color","Cambia el color de la app (encabezado y botón de enviar). Se recuerda."],
+        ["✏️","Editar","Toca el nombre del contacto o cualquier mensaje para cambiarlo. Toca la foto para poner la tuya."],
+        ["🧹","Vaciar chat","Borra los mensajes para empezar otra toma (el guion se mantiene)."],
+        ["🎬","Chroma","Fondo gris con cruces en las esquinas para recortar en vídeo."],
+        ["🌐","Idioma","Cambia toda la app entre español e inglés."],
+        ["💾 / 📸","Guardar y Capturar","Guardar conserva tu chat en el dispositivo. Capturar oculta los controles para tu foto o grabación."]],
+    en:[["✍️","Type and send","Type your message below and press ➤. The next scripted reply appears after its delay, with “typing…”."],
+        ["📝","Script","Set the other person’s replies and their delay (3/4/7 s or any value). Under “Your messages” add yours for ▶ Play."],
+        ["▶️","Play","Plays the whole conversation automatically."],
+        ["🎨","Color","Change the app color (header and send button). It’s remembered."],
+        ["✏️","Edit","Tap the contact name or any message to change it. Tap the photo to set your own."],
+        ["🧹","Clear chat","Clears the messages for another take (the script stays)."],
+        ["🎬","Chroma","Gray background with corner marks to key it out in video."],
+        ["🌐","Language","Switch the whole app between Spanish and English."],
+        ["💾 / 📸","Save & Capture","Save keeps your chat on the device. Capture hides the controls for your photo or recording."]]
+  };
+  function renderHelp(){
+    $('helpTitle').textContent=lang==='es'?'Cómo usar Chatia':'How to use Chatia';
+    $('helpLead').textContent=lang==='es'?'Guía rápida de la app.':'Quick guide to the app.';
+    $('helpOk').textContent=lang==='es'?'Entendido':'Got it';
+    $('helpBody').innerHTML=HELP[lang].map(r=>'<div class="row"><div class="k">'+r[0]+'</div><div class="v"><b>'+r[1]+'</b>'+r[2]+'</div></div>').join('');
+  }
+  function toggleHelp(){ const o=$('helpOverlay'); const show=!o.classList.contains('show'); o.classList.toggle('show',show); if(show) renderHelp(); }
+
+  function nowT(){ const d=new Date(); return d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0'); }
+
+  function addBubble(who,text){
+    const m=document.createElement('div'); m.className='msg '+who;
+    m.innerHTML='<span class="txt" contenteditable="'+editOn+'"></span><span class="t">'+nowT()+'</span>'+(who==='me'?'<span class="ck">✓✓</span>':'')+'<button class="x" onclick="this.closest(\'.msg\').remove()">✕</button>';
+    m.querySelector('.txt').textContent=text;
+    body.appendChild(m); body.scrollTop=body.scrollHeight; return m;
+  }
+  function setStatus(key){ statusEl.textContent=I18N[lang][key]; }
+
+  function typingThen(text,delay){
+    setStatus('status_typing');
+    const t=document.createElement('div'); t.className='typing'; t.innerHTML='<span></span><span></span><span></span>';
+    body.appendChild(t); body.scrollTop=body.scrollHeight;
+    return new Promise(res=>{
+      setTimeout(()=>{ t.remove(); addBubble('other',text); setStatus('status_online'); res(); }, Math.max(300,delay*1000));
+    });
+  }
+
+  // ---- guion (arrays) ----
+  let replies=[{text:'',delay:3}], mine=[{text:''}];
+  function renderReplies(){
+    const box=$('replies'); box.innerHTML='';
+    replies.forEach((r,i)=>{
+      const row=document.createElement('div'); row.className='rowline';
+      row.innerHTML='<input type="text" placeholder="'+I18N[lang].ph_reply+'"><input type="number" min="0" step="1"><span class="lbl">'+(lang==='es'?'seg':'sec')+'</span><button class="rm">✕</button>';
+      const [tx,de]=row.querySelectorAll('input'); tx.value=r.text; de.value=r.delay;
+      tx.oninput=()=>{replies[i].text=tx.value;}; de.oninput=()=>{replies[i].delay=+de.value||0;};
+      de.onfocus=()=>{lastDelayField=de; lastDelayIdx=i;};
+      row.querySelector('.rm').onclick=()=>{replies.splice(i,1); if(!replies.length)replies.push({text:'',delay:3}); renderReplies();};
+      box.appendChild(row);
+    });
+  }
+  let lastDelayIdx=0;
+  function addReply(){ replies.push({text:'',delay:3}); renderReplies(); }
+  function quick(n){ if(replies[lastDelayIdx]){replies[lastDelayIdx].delay=n; renderReplies();} }
+  function renderMine(){
+    const box=$('mine'); box.innerHTML='';
+    mine.forEach((m,i)=>{
+      const row=document.createElement('div'); row.className='rowline';
+      row.innerHTML='<input type="text" placeholder="'+I18N[lang].ph_mine+'"><button class="rm">✕</button>';
+      const tx=row.querySelector('input'); tx.value=m.text; tx.oninput=()=>{mine[i].text=tx.value;};
+      row.querySelector('.rm').onclick=()=>{mine.splice(i,1); if(!mine.length)mine.push({text:''}); renderMine();};
+      box.appendChild(row);
+    });
+  }
+  function addMine(){ mine.push({text:''}); renderMine(); }
+
+  // ---- envío manual (type-driven) ----
+  function send(){
+    const text=input.value.trim(); if(!text) return;
+    addBubble('me',text); input.value='';
+    const r=replies[replyIdx];
+    if(r && r.text.trim()!==''){ replyIdx++; typingThen(r.text, r.delay); }
+  }
+
+  // ---- reproducir todo ----
+  let playing=false;
+  async function playAll(){
+    if(playing) return; playing=true;
+    clearChat();
+    const n=Math.max(mine.length, replies.length);
+    for(let i=0;i<n;i++){
+      if(mine[i] && mine[i].text.trim()!==''){ addBubble('me',mine[i].text); await wait(700); }
+      if(replies[i] && replies[i].text.trim()!==''){ await typingThen(replies[i].text, replies[i].delay); await wait(400); }
+    }
+    playing=false;
+  }
+  const wait=ms=>new Promise(r=>setTimeout(r,ms));
+  function clearChat(){ body.innerHTML=''; replyIdx=0; setStatus('status_online'); }
+
+  // ---- avatar ----
+  $('avatar').addEventListener('click',()=>{ if(!editOn) return; picker.value=''; picker.click(); });
+  picker.addEventListener('change',()=>{ const f=picker.files[0]; if(!f) return; const rd=new FileReader();
+    rd.onload=()=>{ $('avatar').style.backgroundImage=`url(${rd.result})`; }; rd.readAsDataURL(f); });
+
+  // ---- barra ----
+  function applyLang(){
+    const d=I18N[lang];
+    document.querySelectorAll('[data-i18n]').forEach(el=>{ const k=el.dataset.i18n; if(k in d) el.textContent=d[k]; });
+    $('langBtn').textContent=lang==='es'?'🌐 EN':'🌐 ES';
+    $('fullBtn').textContent=document.fullscreenElement?d.ui_full_exit:d.ui_full;
+    $('chromaBtn').textContent=chromaOn?d.ui_chroma_on:d.ui_chroma_off;
+    $('editBtn').textContent=editOn?d.ui_edit_on:d.ui_edit_off;
+    input.placeholder=d.ph_input;
+    if(!contactEdited && ($('cname').textContent.trim()===''||$('cname').textContent===I18N.es.def_contact||$('cname').textContent===I18N.en.def_contact)) $('cname').textContent=d.def_contact;
+    setStatus(statusEl.textContent===I18N.es.status_typing||statusEl.textContent===I18N.en.status_typing?'status_typing':'status_online');
+    document.documentElement.lang=lang;
+    renderReplies(); renderMine();
+    if($('helpOverlay').classList.contains('show')) renderHelp();
+  }
+  function toggleLang(){ lang=lang==='es'?'en':'es'; try{const s=JSON.parse(localStorage.getItem(SUITE))||{}; s.lang=lang; localStorage.setItem(SUITE,JSON.stringify(s));}catch(e){} applyLang(); }
+  $('cname').addEventListener('input',()=>{contactEdited=true;});
+  function toggleEditor(){ $('editor').classList.toggle('show'); }
+  function toggleChroma(){ chromaOn=body?false:false; chromaOn=document.body.classList.toggle('chroma'); $('chromaBtn').textContent=chromaOn?I18N[lang].ui_chroma_on:I18N[lang].ui_chroma_off; }
+  function toggleEdit(){ editOn=document.body.classList.toggle('edit-on'); document.querySelectorAll('[contenteditable]').forEach(el=>el.setAttribute('contenteditable',editOn)); $('editBtn').textContent=editOn?I18N[lang].ui_edit_on:I18N[lang].ui_edit_off; }
+  function toggleBar(){ document.body.classList.toggle('bar-off'); }
+  function toggleFull(){ const el=document.documentElement; const req=el.requestFullscreen||el.webkitRequestFullscreen;
+    if(document.fullscreenElement){ (document.exitFullscreen||document.webkitExitFullscreen).call(document); }
+    else if(req){ req.call(el); }
+    else { alert(lang==='es'?'En iPhone la pantalla completa no está disponible desde el navegador. Instálala: Compartir → “Añadir a pantalla de inicio”, y ábrela desde el icono: se abre a pantalla completa sin barras.':'On iPhone, full screen is not available from the browser. Install it: Share → “Add to Home Screen”, then open it from the icon: it opens full screen with no bars.'); } }
+  document.addEventListener('fullscreenchange',()=>{ $('fullBtn').textContent=document.fullscreenElement?I18N[lang].ui_full_exit:I18N[lang].ui_full; });
+  function capture(){ document.body.classList.add('hide-controls'); if(editOn) toggleEdit(); $('editor').classList.remove('show');
+    alert(lang==='es'?'Controles ocultos. Haz tu captura o graba. Recarga para volver a editar.':'Controls hidden. Screenshot or record. Reload to edit again.'); }
+
+  // ---- guardar / cargar ----
+  function save(){
+    const state={lang,contactName:$('cname').textContent,contactEdited,avatar:$('avatar').style.backgroundImage,
+      status:statusEl.textContent,messages:body.innerHTML,replies,mine,replyIdx};
+    try{ localStorage.setItem(KEY,JSON.stringify(state)); alert(lang==='es'?'Guardado.':'Saved.'); }
+    catch(e){ alert(lang==='es'?'No se pudo guardar (imagen muy grande).':'Could not save (image too large).'); }
+  }
+  function load(){
+    try{ const s=JSON.parse(localStorage.getItem(KEY)); if(!s) return false;
+      if(s.contactName){$('cname').textContent=s.contactName;} contactEdited=!!s.contactEdited;
+      if(s.avatar)$('avatar').style.backgroundImage=s.avatar;
+      if(s.messages)body.innerHTML=s.messages;
+      if(Array.isArray(s.replies)&&s.replies.length)replies=s.replies;
+      if(Array.isArray(s.mine)&&s.mine.length)mine=s.mine;
+      replyIdx=s.replyIdx||0; return true;
+    }catch(e){ return false; }
+  }
+  function resetAll(){ if(confirm(lang==='es'?'¿Restablecer todo el chat y el guion?':'Reset the whole chat and script?')){ localStorage.removeItem(KEY); location.reload(); } }
+
+  // ---- arranque ----
+  const had=load();
+  if(!had){
+    // demo inicial
+    $('cname').textContent = I18N[lang].def_contact;
+    replies=[{text: lang==='es'?'¡Hola! ¿Cómo estás?':'Hey! How are you?',delay:3},
+             {text: lang==='es'?'Genial, ¿nos vemos luego?':'Great, see you later?',delay:4}];
+    mine=[{text: lang==='es'?'Hola 👋':'Hi 👋'},{text: lang==='es'?'Todo bien ¿y tú?':'All good, you?'}];
+  }
+  applyLang();
+  applyColor();
+  if('serviceWorker' in navigator && location.protocol.startsWith('http')){
+    window.addEventListener('load',()=>navigator.serviceWorker.register('chatia-sw.js').catch(()=>{}));
+  }
+</script>
+</body>
+</html>
